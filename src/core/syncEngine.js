@@ -69,7 +69,7 @@ export class SyncEngine extends EventEmitter {
       
       this.lastDriftTier = 'synced'; // child_process audio can't easily micro-rate
       this.emit('drift', { tier: this.lastDriftTier, expected: this.getExpectedPositionSec() });
-    }, 5000);
+    }, 1000);
   }
 
   stopDriftCorrection() {

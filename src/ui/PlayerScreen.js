@@ -4,8 +4,16 @@ import TextInput from 'ink-text-input';
 import { syncBeatsClient } from '../core/syncBeatsClient.js';
 import { syncEngine } from '../core/syncEngine.js';
 import { authService } from '../core/authService.js';
+import { trackDownloader } from '../core/trackDownloader.js';
 
-export function PlayerScreen() {
+function formatTime(seconds) {
+  if (isNaN(seconds) || seconds < 0) return '00:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+export function PlayerScreen({ roomId: initialRoomId }) {
   const { exit } = useApp();
   const [roomState, setRoomState] = useState(null);
   const [syncStats, setSyncStats] = useState({ latency: 0, offset: 0 });
@@ -15,30 +23,40 @@ export function PlayerScreen() {
   const [searchResults, setSearchResults] = useState([]);
   const [searchSelectedIndex, setSearchSelectedIndex] = useState(0);
   const [driftInfo, setDriftInfo] = useState({ tier: 'synced', expected: 0 });
+  const [downloadProgress, setDownloadProgress] = useState(null);
   
   useEffect(() => {
-    // Start connection and join default room immediately
+    // Start connection and join the selected room immediately
     syncBeatsClient.connect();
     // Ensure room exists in DB before joining so we can enqueue tracks
-    syncBeatsClient.createRoom('global').then(() => {
-      syncBeatsClient.joinRoom('global');
+    syncBeatsClient.createRoom(initialRoomId).then(() => {
+      syncBeatsClient.joinRoom(initialRoomId);
     });
 
     const onRoomState = (state) => setRoomState(state);
     const onStats = (stats) => setSyncStats(stats);
-    const onBuffering = (isBuffering) => setBuffering(isBuffering);
+    const onBuffering = (isBuffering) => {
+      setBuffering(isBuffering);
+      if (!isBuffering) setDownloadProgress(null);
+    };
     const onDrift = (info) => setDriftInfo(info);
+    const onProgress = (p) => setDownloadProgress(p.progress);
+    const onReady = () => setDownloadProgress(100);
 
     syncBeatsClient.on('roomState', onRoomState);
     syncBeatsClient.on('buffering', onBuffering);
     syncEngine.on('stats', onStats);
     syncEngine.on('drift', onDrift);
+    trackDownloader.on('progress', onProgress);
+    trackDownloader.on('ready', onReady);
 
     return () => {
       syncBeatsClient.off('roomState', onRoomState);
       syncBeatsClient.off('buffering', onBuffering);
       syncEngine.off('stats', onStats);
       syncEngine.off('drift', onDrift);
+      trackDownloader.off('progress', onProgress);
+      trackDownloader.off('ready', onReady);
     };
   }, []);
 
@@ -71,7 +89,7 @@ export function PlayerScreen() {
       setSearchSelectedIndex(0);
     }
     if (input === ' ') {
-      syncBeatsClient.sendControls(roomState?.state === 'playing' ? 'pause' : 'play');
+      syncBeatsClient.togglePlayPause();
     }
     if (input === 'n' || input === 'N') {
       syncBeatsClient.sendControls('next');
@@ -94,14 +112,24 @@ export function PlayerScreen() {
     }
   };
 
-  const currentTrack = roomState?.queue?.find(q => q.isCurrent) || null;
+  const currentTrack = roomState?.queue?.find(q => q.isCurrent) 
+    || roomState?.queue?.find(q => q.trackUrl === roomState?.trackUrl) 
+    || (roomState?.trackUrl ? { title: 'Unknown Track', artist: 'Unknown', trackUrl: roomState.trackUrl } : null);
+
+  if (!roomState) {
+    return (
+      <Box minHeight="100%" minWidth="100%" flexDirection="column" borderStyle="round" borderColor="cyan" justifyContent="center" alignItems="center">
+        <Text color="cyan">⏳ Connecting to Room {initialRoomId}...</Text>
+      </Box>
+    );
+  }
 
   return (
     <Box minHeight="100%" minWidth="100%" flexDirection="column" borderStyle="round" borderColor="cyan">
       {/* Header */}
-      <Box paddingX={1} borderBottom={false} marginBottom={1} justifyContent="space-between">
-        <Text bold color="cyanBright">SyncBeats Terminal</Text>
-        <Text color="gray">Room: {roomState?.roomId || 'Connecting...'}</Text>
+      <Box borderStyle="round" borderColor="green" padding={1} marginBottom={1} justifyContent="space-between">
+        <Text bold color="greenBright">SyncBeats Terminal</Text>
+        <Text color="gray">Room: {initialRoomId}</Text>
       </Box>
 
       {/* Search Bar */}
@@ -148,9 +176,21 @@ export function PlayerScreen() {
                 <Text color="gray">{currentTrack.artist}</Text>
                 <Box marginTop={1}>
                   {buffering ? (
-                    <Text color="yellow">⏳ Buffering...</Text>
+                    <Text color="yellow">
+                      {downloadProgress === 100 
+                        ? '⏳ Waiting for other participants to sync...' 
+                        : `⏳ Buffering... ${downloadProgress !== null ? `${downloadProgress}%` : ''}`}
+                    </Text>
                   ) : (
-                    <Text color="green">{roomState?.state === 'playing' ? '▶ Playing' : '⏸ Paused'} {Math.floor(driftInfo.expected)}s</Text>
+                    <Box flexDirection="column">
+                      <Text color={roomState?.state?.toUpperCase() === 'PLAYING' ? 'green' : 'yellow'}>
+                        {roomState?.state?.toUpperCase() === 'PLAYING' ? '▶ Playing' : '⏸ Paused'}
+                      </Text>
+                      <Box marginTop={1} flexDirection="row" alignItems="center">
+                        <Text color="cyan">{formatTime(driftInfo.expected)} </Text>
+                        <Text color="gray">[{'▬'.repeat(30)}]</Text>
+                      </Box>
+                    </Box>
                   )}
                 </Box>
               </>

@@ -94,7 +94,7 @@ class AuthService {
     if (!this.getToken()) return null;
     try {
       const data = await this._request('/auth/me');
-      this.setUser(data);
+      this.setUser(data.user);
       return data;
     } catch (err) {
       this.logout();

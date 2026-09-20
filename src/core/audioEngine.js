@@ -8,7 +8,7 @@ export class AudioEngine extends EventEmitter {
     this.process = null;
     this.isPlaying = false;
     this.currentFile = null;
-    this.playerCmd = os.platform() === 'darwin' ? 'afplay' : 'ffplay';
+    this.playerCmd = 'ffplay'; // Use ffplay for everything because afplay lacks seeking
   }
 
   play(filePath, seekSecs = 0) {
@@ -18,9 +18,6 @@ export class AudioEngine extends EventEmitter {
 
     const args = [];
     if (this.playerCmd === 'afplay') {
-      if (seekSecs > 0) {
-        args.push('-t', seekSecs.toString());
-      }
       args.push(filePath);
     } else {
       // ffplay fallback

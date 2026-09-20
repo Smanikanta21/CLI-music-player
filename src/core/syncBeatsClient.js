@@ -58,6 +58,10 @@ export class SyncBeatsClient extends EventEmitter {
       this._handleTrackUpdate(payload);
     });
 
+    trackDownloader.on('error', (err) => {
+      this.emit('error', err);
+    });
+
     this.socket.on('playback:schedule', (payload) => {
       // payload = { startEpoch, fromPosition, trackUrl, atEpoch }
       if (this.roomState) {
@@ -65,7 +69,14 @@ export class SyncBeatsClient extends EventEmitter {
       }
       this.emit('buffering', false);
       const url = payload.trackUrl || this.roomState?.trackUrl;
-      const trackId = url ? url.split('=').pop() : 'unknown';
+      let trackId = url;
+      if (url && url.startsWith('youtube:')) {
+        trackId = url.split(':')[1];
+      } else if (url) {
+        trackId = url.split('=').pop();
+      } else {
+        trackId = 'unknown';
+      }
       const localPath = `${process.cwd()}/music/${trackId}.m4a`;
       syncEngine.schedule(payload, localPath);
     });
@@ -99,9 +110,9 @@ export class SyncBeatsClient extends EventEmitter {
       }
     });
     
-    this.socket.on('room:queueChanged', (queue) => {
+    this.socket.on('room:queueChanged', (payload) => {
        if (this.roomState) {
-           this.roomState.queue = queue;
+           this.roomState.queue = Array.isArray(payload) ? payload : (payload?.queue || []);
            this.emit('roomState', this.roomState);
        }
     });
@@ -130,8 +141,13 @@ export class SyncBeatsClient extends EventEmitter {
 
   joinRoom(roomId) {
     if (!this.socket) this.connect();
+    this.roomId = roomId;
     const user = authService.getUser();
-    this.socket.emit('room:join', { roomId, displayName: user?.name || 'Terminal User' });
+    this.socket.emit('room:join', { 
+      roomId, 
+      displayName: user?.name || 'Terminal User',
+      userId: user?.id
+    });
   }
 
   async searchTracks(query) {
@@ -174,25 +190,72 @@ export class SyncBeatsClient extends EventEmitter {
     }
   }
 
+  togglePlayPause() {
+    const state = this.roomState?.state?.toUpperCase();
+    if (state === 'PLAYING' || this.roomState?.isPlaying) {
+      this.socket.emit('playback:pause', { roomId: this.roomId });
+    } else {
+      this.socket.emit('playback:play', { roomId: this.roomId });
+    }
+  }
+
   sendControls(action) {
      if (!this.roomId) return;
-     if (action === 'pause') this.socket.emit('playback:pause', { roomId: this.roomId });
-     if (action === 'play') this.socket.emit('playback:resume', { roomId: this.roomId }); // Assuming resume exists
-     if (action === 'next') this.socket.emit('room:nextTrack', { roomId: this.roomId });
-     if (action === 'prev') this.socket.emit('room:prevTrack', { roomId: this.roomId });
+     if (action === 'pause') {
+       this.socket.emit('playback:pause', { roomId: this.roomId });
+     }
+     if (action === 'play') {
+       this.socket.emit('playback:play', { roomId: this.roomId });
+     }
+     if (action === 'next') {
+       this.socket.emit('room:nextTrack', { roomId: this.roomId });
+     }
+     if (action === 'prev') {
+       this.socket.emit('room:prevTrack', { roomId: this.roomId });
+     }
   }
 
   async _handleTrackUpdate(payload) {
-    const url = payload.trackUrl;
+    let url = payload.trackUrl;
     if (!url) return;
     
     this.emit('buffering', true);
-    // Extract ID (usually ?videoId=...)
-    const trackId = url.split('=').pop(); 
+    
+    let trackId = url;
+    if (url.startsWith('youtube:')) {
+      const videoId = url.split(':')[1];
+      url = `/rooms/${this.roomId}/yt-proxy?videoId=${videoId}`;
+      trackId = videoId;
+    } else {
+      trackId = url.split('=').pop(); 
+    }
     
     const filePath = await trackDownloader.download(url, trackId);
     if (filePath) {
       this.socket.emit('room:clientReady', { roomId: this.roomId });
+      
+      // If the room is already playing (e.g. late join), start playback immediately
+      // instead of waiting for playback:schedule, because the server won't send it again.
+      if (payload.state === 'playing' || payload.timeline?.isPlaying || this.roomState?.isPlaying) {
+        this.emit('buffering', false);
+        syncEngine.schedule({
+          startEpoch: payload.timeline?.startEpoch || this.roomState?.startEpoch,
+          fromPosition: payload.position || payload.timeline?.pauseOffset || this.roomState?.pauseOffset || 0,
+          trackUrl: payload.trackUrl,
+          atEpoch: Date.now() // start instantly
+        }, filePath);
+      } else if (payload.state === 'PAUSED' || payload.state === 'paused') {
+        this.emit('buffering', false);
+        const pos = payload.position || payload.positionMs || 0;
+        this.emit('drift', { expected: pos / 1000, actual: 0 });
+      } else if (this.roomState && !this.roomState.pendingPlay) {
+        // If the room is not pending an auto-play (meaning it's just paused),
+        // clear the buffering state so the user sees the Paused UI instead of getting stuck.
+        this.emit('buffering', false);
+        // Force the UI to show the correct paused time instead of 0s
+        const expectedSec = (payload.timeline?.pauseOffset || this.roomState?.pauseOffset || 0) / 1000;
+        syncEngine.emit('drift', { expected: expectedSec, tier: 'synced' });
+      }
     }
   }
 
