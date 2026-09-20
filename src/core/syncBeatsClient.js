@@ -83,9 +83,17 @@ export class SyncBeatsClient extends EventEmitter {
 
     this.socket.on('playback:pause', (payload) => {
       if (this.roomState) {
-        this.roomState.state = 'paused';
+        this.roomState.state = 'PAUSED';
+        this.roomState.isPlaying = false;
+        if (payload.positionMs) {
+          this.roomState.pauseOffset = payload.positionMs;
+        }
       }
-      syncEngine.pause(payload.position);
+      this.emit('buffering', false);
+      const pos = payload.position || payload.positionMs || 0;
+      syncEngine.pause(pos / 1000);
+      this.emit('drift', { expected: pos / 1000, actual: 0, tier: 'synced' });
+      this.emit('roomState', { ...this.roomState });
     });
 
     this.socket.on('sync:pong', (payload) => {
@@ -119,13 +127,23 @@ export class SyncBeatsClient extends EventEmitter {
 
     audioEngine.on('ended', () => {
       // When audio finishes playing naturally
-      this.socket.emit('playback:ended');
+      if (this.roomId && this.roomState?.trackUrl) {
+        this.socket.emit('playback:ended', { roomId: this.roomId, trackUrl: this.roomState.trackUrl });
+      }
     });
   }
 
   async createRoom(roomId) {
     const token = authService.getToken();
     try {
+      // Check if room already exists to prevent backend 500 Unique Constraint errors
+      const checkRes = await fetch(`${SERVER_URL}/rooms/${roomId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (checkRes.ok) {
+        return; // Room already exists
+      }
+
       await fetch(`${SERVER_URL}/rooms`, {
         method: 'POST',
         headers: { 
@@ -135,7 +153,7 @@ export class SyncBeatsClient extends EventEmitter {
         body: JSON.stringify({ roomId })
       });
     } catch (e) {
-      console.error(e);
+      // Silently ignore network errors here, joinRoom will handle failures
     }
   }
 
@@ -215,6 +233,22 @@ export class SyncBeatsClient extends EventEmitter {
      }
   }
 
+  jumpToQueueItem(trackId) {
+    if (!this.roomId) return;
+    this.socket.emit('playback:jumpTo', { roomId: this.roomId, trackId });
+  }
+
+  toggleRepeat() {
+    if (!this.roomId || !this.roomState) return;
+    const currentMode = this.roomState.repeatMode || 'off';
+    const nextMode = currentMode === 'off' ? 'all' : currentMode === 'all' ? 'track' : 'off';
+    this.socket.emit('room:settings', { 
+      roomId: this.roomId, 
+      shuffle: this.roomState.shuffle || false, 
+      repeatMode: nextMode 
+    });
+  }
+
   async _handleTrackUpdate(payload) {
     let url = payload.trackUrl;
     if (!url) return;
@@ -236,24 +270,25 @@ export class SyncBeatsClient extends EventEmitter {
       
       // If the room is already playing (e.g. late join), start playback immediately
       // instead of waiting for playback:schedule, because the server won't send it again.
-      if (payload.state === 'playing' || payload.timeline?.isPlaying || this.roomState?.isPlaying) {
+      const isPlaying = payload.state === 'playing' || payload.state === 'PLAYING' || payload.isPlaying || this.roomState?.isPlaying;
+      if (isPlaying) {
         this.emit('buffering', false);
         syncEngine.schedule({
-          startEpoch: payload.timeline?.startEpoch || this.roomState?.startEpoch,
-          fromPosition: payload.position || payload.timeline?.pauseOffset || this.roomState?.pauseOffset || 0,
+          startEpoch: payload.startEpoch || this.roomState?.startEpoch,
+          fromPosition: payload.positionMs || payload.pauseOffset || this.roomState?.pauseOffset || 0,
           trackUrl: payload.trackUrl,
           atEpoch: Date.now() // start instantly
         }, filePath);
       } else if (payload.state === 'PAUSED' || payload.state === 'paused') {
         this.emit('buffering', false);
-        const pos = payload.position || payload.positionMs || 0;
+        const pos = payload.positionMs || payload.position || 0;
         this.emit('drift', { expected: pos / 1000, actual: 0 });
       } else if (this.roomState && !this.roomState.pendingPlay) {
         // If the room is not pending an auto-play (meaning it's just paused),
         // clear the buffering state so the user sees the Paused UI instead of getting stuck.
         this.emit('buffering', false);
         // Force the UI to show the correct paused time instead of 0s
-        const expectedSec = (payload.timeline?.pauseOffset || this.roomState?.pauseOffset || 0) / 1000;
+        const expectedSec = (payload.pauseOffset || this.roomState?.pauseOffset || 0) / 1000;
         syncEngine.emit('drift', { expected: expectedSec, tier: 'synced' });
       }
     }

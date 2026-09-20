@@ -24,6 +24,8 @@ export function PlayerScreen({ roomId: initialRoomId }) {
   const [searchSelectedIndex, setSearchSelectedIndex] = useState(0);
   const [driftInfo, setDriftInfo] = useState({ tier: 'synced', expected: 0 });
   const [downloadProgress, setDownloadProgress] = useState(null);
+  const [queueState, setQueueState] = useState('none');
+  const [queueSelectedIndex, setQueueSelectedIndex] = useState(0);
   
   useEffect(() => {
     // Start connection and join the selected room immediately
@@ -79,9 +81,30 @@ export function PlayerScreen({ roomId: initialRoomId }) {
       return; // let TextInput handle the rest
     }
 
+    if (queueState === 'focused') {
+      if (key.escape) {
+        setQueueState('none');
+      } else if (key.upArrow) {
+        setQueueSelectedIndex(Math.max(0, queueSelectedIndex - 1));
+      } else if (key.downArrow) {
+        setQueueSelectedIndex(Math.min((roomState?.queue?.length || 1) - 1, queueSelectedIndex + 1));
+      } else if (key.return && roomState?.queue?.[queueSelectedIndex]) {
+        syncBeatsClient.jumpToQueueItem(roomState.queue[queueSelectedIndex].id);
+        setQueueState('none');
+      }
+      return;
+    }
+
     if (input === 'q' || input === 'Q') {
       exit();
       process.exit(0);
+    }
+    if (input === 'm' || input === 'M') {
+      setQueueState('focused');
+      setQueueSelectedIndex(0);
+    }
+    if (input === 'r' || input === 'R') {
+      syncBeatsClient.toggleRepeat();
     }
     if (input === 's' || input === 'S') {
       setSearchState('input');
@@ -168,7 +191,7 @@ export function PlayerScreen({ roomId: initialRoomId }) {
         <Box width="60%" flexDirection="column" paddingRight={2}>
           
           {/* Now Playing */}
-          <Box borderStyle="round" borderColor="magenta" padding={1} flexDirection="column" height={8}>
+          <Box borderStyle="round" borderColor="magenta" padding={1} flexDirection="column" flexBasis="50%">
             <Text bold color="magentaBright">Now Playing</Text>
             {currentTrack ? (
               <>
@@ -176,11 +199,21 @@ export function PlayerScreen({ roomId: initialRoomId }) {
                 <Text color="gray">{currentTrack.artist}</Text>
                 <Box marginTop={1}>
                   {buffering ? (
-                    <Text color="yellow">
-                      {downloadProgress === 100 
-                        ? '⏳ Waiting for other participants to sync...' 
-                        : `⏳ Buffering... ${downloadProgress !== null ? `${downloadProgress}%` : ''}`}
-                    </Text>
+                    <Box flexDirection="column">
+                      <Text color="yellow">
+                        {downloadProgress === 100 
+                          ? '⏳ Waiting for other participants to sync...' 
+                          : '⏳ Downloading track...'}
+                      </Text>
+                      {downloadProgress !== null && downloadProgress < 100 && (
+                        <Box marginTop={1} flexDirection="row" alignItems="center">
+                          <Text color="cyan">{downloadProgress}% </Text>
+                          <Text color="gray">
+                            [{'▬'.repeat(Math.floor(downloadProgress / 100 * 20))}{' '.repeat(20 - Math.floor(downloadProgress / 100 * 20))}]
+                          </Text>
+                        </Box>
+                      )}
+                    </Box>
                   ) : (
                     <Box flexDirection="column">
                       <Text color={roomState?.state?.toUpperCase() === 'PLAYING' ? 'green' : 'yellow'}>
@@ -188,7 +221,7 @@ export function PlayerScreen({ roomId: initialRoomId }) {
                       </Text>
                       <Box marginTop={1} flexDirection="row" alignItems="center">
                         <Text color="cyan">{formatTime(driftInfo.expected)} </Text>
-                        <Text color="gray">[{'▬'.repeat(30)}]</Text>
+                        <Text color="gray"> (Duration unknown)</Text>
                       </Box>
                     </Box>
                   )}
@@ -214,7 +247,7 @@ export function PlayerScreen({ roomId: initialRoomId }) {
         <Box width="40%" flexDirection="column">
           
           {/* Participants */}
-          <Box borderStyle="round" borderColor="green" padding={1} flexDirection="column" flexGrow={1}>
+          <Box borderStyle="round" borderColor="green" padding={1} flexDirection="column" flexBasis="50%">
             <Text bold color="greenBright">Participants</Text>
             {(roomState?.participants || []).map((p) => (
               <Text key={p.socketId}>
@@ -235,7 +268,7 @@ export function PlayerScreen({ roomId: initialRoomId }) {
       {/* Footer Controls */}
       <Box marginTop={1} justifyContent="center">
         <Text color="gray">
-          [SPACE] Play/Pause • [N] Next • [P] Prev • [S] Search • [Q] Quit
+          [SPACE] Play/Pause • [N] Next • [P] Prev • [R] Repeat • [M] Queue • [S] Search • [Q] Quit
         </Text>
       </Box>
     </Box>

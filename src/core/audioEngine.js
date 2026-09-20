@@ -47,8 +47,9 @@ export class AudioEngine extends EventEmitter {
 
   pause() {
     if (this.process && this.isPlaying) {
-      // SIGSTOP freezes the process
-      this.process.kill('SIGSTOP');
+      // SIGKILL instantly terminates to prevent audio buffering delays
+      this.process.kill('SIGKILL');
+      this.process = null;
       this.isPlaying = false;
     }
   }
