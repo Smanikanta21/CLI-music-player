@@ -20,7 +20,7 @@ export class TrackDownloader extends EventEmitter {
     // trackUrl from the server is usually /rooms/:roomId/yt-proxy?videoId=123
     // Wait, the client usually passes the trackUrl directly.
     // If it's a relative URL, we need to append the server URL.
-    const fullUrl = trackUrl.startsWith('http') ? trackUrl : `http://localhost:4000${trackUrl}`;
+    const fullUrl = trackUrl.startsWith('http') ? trackUrl : `https://syncbeats-server-1006171035854.asia-south1.run.app${trackUrl}`;
     
     // Sanitize filename
     const safeId = trackId.replace(/[^a-zA-Z0-9_-]/g, '');

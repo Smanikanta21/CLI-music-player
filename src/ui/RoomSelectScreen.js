@@ -16,7 +16,7 @@ export function RoomSelectScreen({ onJoin }) {
       setLoading(true);
       try {
         const token = authService.getToken();
-        const res = await fetch('http://localhost:4000/rooms/mine', {
+        const res = await fetch('https://syncbeats-server-1006171035854.asia-south1.run.app/rooms/mine', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

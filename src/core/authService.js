@@ -3,7 +3,7 @@ import Configstore from 'configstore';
 import { v4 as uuidv4 } from 'uuid';
 
 const config = new Configstore('syncbeats-terminal');
-const SERVER_URL = 'http://localhost:4000';
+const SERVER_URL = 'https://syncbeats-server-1006171035854.asia-south1.run.app';
 
 class AuthService {
   constructor() {
