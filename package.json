@@ -1,0 +1,29 @@
+{
+  "name": "terminal-music-player",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "bin": {
+    "terminal-music-player": "bin/index.js"
+  },
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --platform=node --format=esm --outfile=dist/index.js --loader:.js=jsx --packages=external",
+    "start": "npm run build && node bin/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "ink": "^7.1.1",
+    "meow": "^14.1.0",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^8.0.6",
+    "@babel/preset-env": "^8.0.6",
+    "@babel/preset-react": "^8.0.1",
+    "@babel/register": "^8.0.6",
+    "esbuild": "^0.28.2"
+  }
+}
