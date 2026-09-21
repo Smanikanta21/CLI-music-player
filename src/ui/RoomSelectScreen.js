@@ -3,6 +3,7 @@ import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
 import { authService } from '../core/authService.js';
 import fetch from 'node-fetch';
+import { SERVER_URL } from '../core/config.js';
 
 export function RoomSelectScreen({ onJoin }) {
   const [roomId, setRoomId] = useState('');
@@ -16,7 +17,7 @@ export function RoomSelectScreen({ onJoin }) {
       setLoading(true);
       try {
         const token = authService.getToken();
-        const res = await fetch('https://syncbeats-server-1006171035854.asia-south1.run.app/rooms/mine', {
+        const res = await fetch(`${SERVER_URL}/rooms/mine`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

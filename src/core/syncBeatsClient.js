@@ -5,7 +5,7 @@ import { syncEngine } from './syncEngine.js';
 import { trackDownloader } from './trackDownloader.js';
 import { audioEngine } from './audioEngine.js';
 
-const SERVER_URL = 'https://syncbeats-server-1006171035854.asia-south1.run.app';
+import { SERVER_URL } from './config.js';
 
 export class SyncBeatsClient extends EventEmitter {
   constructor() {

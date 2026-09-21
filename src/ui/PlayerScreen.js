@@ -142,7 +142,7 @@ export function PlayerScreen({ roomId: initialRoomId }) {
   if (!roomState) {
     return (
       <Box minHeight="100%" minWidth="100%" flexDirection="column" borderStyle="round" borderColor="cyan" justifyContent="center" alignItems="center">
-        <Text color="cyan">⏳ Connecting to Room {initialRoomId}...</Text>
+        <Text color="cyan">Connecting to Room {initialRoomId}...</Text>
       </Box>
     );
   }
@@ -202,8 +202,8 @@ export function PlayerScreen({ roomId: initialRoomId }) {
                     <Box flexDirection="column">
                       <Text color="yellow">
                         {downloadProgress === 100 
-                          ? '⏳ Waiting for other participants to sync...' 
-                          : '⏳ Downloading track...'}
+                          ? 'Waiting for other participants to sync...' 
+                          : 'Downloading track...'}
                       </Text>
                       {downloadProgress !== null && downloadProgress < 100 && (
                         <Box marginTop={1} flexDirection="row" alignItems="center">
@@ -217,7 +217,7 @@ export function PlayerScreen({ roomId: initialRoomId }) {
                   ) : (
                     <Box flexDirection="column">
                       <Text color={roomState?.state?.toUpperCase() === 'PLAYING' ? 'green' : 'yellow'}>
-                        {roomState?.state?.toUpperCase() === 'PLAYING' ? '▶ Playing' : '⏸ Paused'}
+                        {roomState?.state?.toUpperCase() === 'PLAYING' ? '> Playing' : '|| Paused'}
                       </Text>
                       <Box marginTop={1} flexDirection="row" alignItems="center">
                         <Text color="cyan">{formatTime(driftInfo.expected)} </Text>
@@ -259,8 +259,8 @@ export function PlayerScreen({ roomId: initialRoomId }) {
           {/* Sync Stats */}
           <Box borderStyle="round" borderColor="yellow" padding={1} flexDirection="column" marginTop={1} height={6}>
             <Text bold color="yellowBright">Sync Status</Text>
-            <Text>⚡ {Math.round(syncStats.latency)}ms Latency</Text>
-            <Text>🔄 Drift: {driftInfo.tier}</Text>
+            <Text>{Math.round(syncStats.latency)}ms Latency</Text>
+            <Text>Drift: {driftInfo.tier}</Text>
           </Box>
         </Box>
       </Box>

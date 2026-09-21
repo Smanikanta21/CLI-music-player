@@ -29,7 +29,7 @@ export function App() {
   if (stage === 'auth-check') {
     return (
       <Box minHeight="100%" minWidth="100%" justifyContent="center" alignItems="center">
-        <Text color="cyan">⏳ Checking authentication...</Text>
+        <Text color="cyan">Checking authentication...</Text>
       </Box>
     );
   }

@@ -2,7 +2,7 @@
 
 A terminal-based music player that syncs playback across devices in real-time using [SyncBeats](https://github.com/Smanikanta21/syncbeats) rooms. Search YouTube, queue tracks, and listen in perfect sync — all from your terminal.
 
-> **⚠️ Platform Support: macOS and Linux only.** Windows is not supported.
+> **Platform Support: macOS and Linux only.** Windows is not supported.
 
 ---
 
@@ -24,12 +24,12 @@ npm start
 
 ---
 
-## 📋 Requirements
+## Requirements
 
 | Dependency | Version | Install |
 |---|---|---|
-| **Node.js** | ≥ 18.0.0 | [nodejs.org](https://nodejs.org) |
-| **npm** | ≥ 9.0.0 | Comes with Node.js |
+| **Node.js** | >= 18.0.0 | [nodejs.org](https://nodejs.org) |
+| **npm** | >= 9.0.0 | Comes with Node.js |
 | **ffplay** | Any | `brew install ffmpeg` (macOS) or `sudo apt install ffmpeg` (Linux) |
 | **Git** | Any | `brew install git` (macOS) or `sudo apt install git` (Linux) |
 
@@ -44,52 +44,52 @@ SyncBeats Terminal Player connects to the SyncBeats backend server via **WebSock
 ### Architecture
 
 ```
-┌─────────────────────────┐
-│   SyncBeats Terminal    │
-│   Player (this app)     │
-│                         │
-│  ┌───────────────────┐  │
-│  │   Ink/React UI    │  │  ← Terminal UI rendered with Ink
-│  └────────┬──────────┘  │
-│           │              │
-│  ┌────────▼──────────┐  │
-│  │ SyncBeatsClient   │  │  ← Socket.IO connection + REST API calls
-│  └────────┬──────────┘  │
-│           │              │
-│  ┌────────▼──────────┐  │
-│  │   SyncEngine      │  │  ← NTP clock sync + drift correction
-│  └────────┬──────────┘  │
-│           │              │
-│  ┌────────▼──────────┐  │
-│  │   AudioEngine     │  │  ← Spawns ffplay child process
-│  └────────┬──────────┘  │
-│           │              │
-│  ┌────────▼──────────┐  │
-│  │  TrackDownloader   │  │  ← Downloads .m4a from server
-│  └───────────────────┘  │
-└───────────┬─────────────┘
-            │ WebSocket + HTTPS
-            ▼
-┌─────────────────────────┐
-│   SyncBeats Backend     │
-│   (Cloud Run)           │
-│                         │
-│  • Room management      │
-│  • Queue & playback     │
-│  • YouTube search       │
-│  • NTP clock sync       │
-│  • User authentication  │
-└─────────────────────────┘
++─────────────────────────+
+|   SyncBeats Terminal    |
+|   Player (this app)     |
+|                         |
+|  +───────────────────+  |
+|  |   Ink/React UI    |  |  <- Terminal UI rendered with Ink
+|  +────────┬──────────+  |
+|           |              |
+|  +────────v──────────+  |
+|  | SyncBeatsClient   |  |  <- Socket.IO connection + REST API calls
+|  +────────┬──────────+  |
+|           |              |
+|  +────────v──────────+  |
+|  |   SyncEngine      |  |  <- NTP clock sync + drift correction
+|  +────────┬──────────+  |
+|           |              |
+|  +────────v──────────+  |
+|  |   AudioEngine     |  |  <- Spawns ffplay child process
+|  +────────┬──────────+  |
+|           |              |
+|  +────────v──────────+  |
+|  |  TrackDownloader   |  |  <- Downloads .m4a from server
+|  +───────────────────+  |
++───────────┬─────────────+
+            | WebSocket + HTTPS
+            v
++─────────────────────────+
+|   SyncBeats Backend     |
+|   (Cloud Run)           |
+|                         |
+|  - Room management      |
+|  - Queue & playback     |
+|  - YouTube search       |
+|  - NTP clock sync       |
+|  - User authentication  |
++─────────────────────────+
 ```
 
 ### Playback Flow
 
-1. **Login/Register** → Authenticate with the SyncBeats backend
-2. **Room Selection** → Join an existing room (fetched from your account) or auto-join
-3. **Search & Queue** → Search YouTube directly from the terminal, enqueue tracks
-4. **Download** → When a track is set, the terminal player downloads the `.m4a` audio file from the server to a local `music/` cache
-5. **Synchronized Play** → The backend broadcasts a `playback:schedule` event with a precise `startEpoch` timestamp. All clients start playback at the exact same moment using NTP-synced clocks
-6. **Drift Correction** → A background loop checks the expected vs actual playback position and corrects drift
+1. **Login/Register** - Authenticate with the SyncBeats backend
+2. **Room Selection** - Join an existing room (fetched from your account) or auto-join
+3. **Search & Queue** - Search YouTube directly from the terminal, enqueue tracks
+4. **Download** - When a track is set, the terminal player downloads the `.m4a` audio file from the server to a local `music/` cache
+5. **Synchronized Play** - The backend broadcasts a `playback:schedule` event with a precise `startEpoch` timestamp. All clients start playback at the exact same moment using NTP-synced clocks
+6. **Drift Correction** - A background loop checks the expected vs actual playback position and corrects drift
 
 ### Clock Synchronization
 
@@ -112,11 +112,11 @@ The terminal player implements NTP-style clock synchronization:
 | `N` | Next track |
 | `P` | Previous track |
 | `S` | Open YouTube search |
-| `M` | Focus queue (navigate with ↑↓, Enter to play) |
-| `R` | Toggle repeat mode (off → all → track) |
+| `M` | Focus queue (navigate with Up/Down, Enter to play) |
+| `R` | Toggle repeat mode (off -> all -> track) |
 | `Q` | Quit |
 | `Esc` | Close search / Unfocus queue |
-| `↑` / `↓` | Navigate search results or queue items |
+| `Up` / `Down` | Navigate search results or queue items |
 | `Enter` | Select search result / Play queue item |
 
 ---
@@ -130,6 +130,7 @@ terminal-player/
 ├── src/
 │   ├── index.js           # App bootstrap (Ink render)
 │   ├── core/
+│   │   ├── config.js            # Central SERVER_URL config (env-based)
 │   │   ├── syncBeatsClient.js   # Socket.IO client + REST API
 │   │   ├── syncEngine.js        # NTP clock sync + drift correction
 │   │   ├── audioEngine.js       # ffplay child process manager
@@ -157,6 +158,18 @@ The app stores auth tokens and device keys using [Configstore](https://github.co
 ```
 
 
+By default the terminal player connects to the production SyncBeats backend. Override with an environment variable:
+
+```bash
+# Development (local server)
+SYNCBEATS_SERVER_URL=http://localhost:4000 npm run dev
+
+# Production (default if not set)
+npm run dev
+```
+
+---
+
 ## Development
 
 ```bash
@@ -167,7 +180,7 @@ cd CLI-music-player
 # Install dependencies
 npm install
 
-# Build and run (rebuilds src/ → dist/ via esbuild, then starts)
+# Build and run (rebuilds src/ -> dist/ via esbuild, then starts)
 npm run dev
 
 # Run without rebuilding (uses existing dist/)
@@ -192,6 +205,6 @@ esbuild src/index.js --bundle --platform=node --format=esm --outfile=dist/index.
 
 ---
 
-## 📄 License
+## License
 
 ISC

@@ -19,9 +19,11 @@
     "chalk": "^6.0.0",
     "configstore": "^8.0.0",
     "ink": "^7.1.1",
+    "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
     "meow": "^14.1.0",
     "node-fetch": "^3.3.2",
+    "open": "^11.0.4",
     "react": "^19.3.0",
     "socket.io-client": "^4.8.3",
     "uuid": "^14.0.2"

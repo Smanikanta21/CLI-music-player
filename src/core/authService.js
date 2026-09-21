@@ -3,7 +3,7 @@ import Configstore from 'configstore';
 import { v4 as uuidv4 } from 'uuid';
 
 const config = new Configstore('syncbeats-terminal');
-const SERVER_URL = 'https://syncbeats-server-1006171035854.asia-south1.run.app';
+import { SERVER_URL } from './config.js';
 
 class AuthService {
   constructor() {
@@ -88,6 +88,27 @@ class AuthService {
       this.setUser(data.user);
     }
     return data;
+  }
+
+  async forgotPassword(email) {
+    return await this._request('/auth/password/forgot', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async verifyResetOtp(email, otp) {
+    return await this._request('/auth/password/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    });
+  }
+
+  async resetPasswordWithOtp(email, otp, password) {
+    return await this._request('/auth/password/reset', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp, password }),
+    });
   }
 
   async getMe() {
