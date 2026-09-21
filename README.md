@@ -1,4 +1,4 @@
-# 🎵 SyncBeats Terminal Player
+# SyncBeats Terminal Player
 
 A terminal-based music player that syncs playback across devices in real-time using [SyncBeats](https://github.com/Smanikanta21/syncbeats) rooms. Search YouTube, queue tracks, and listen in perfect sync — all from your terminal.
 
@@ -6,7 +6,7 @@ A terminal-based music player that syncs playback across devices in real-time us
 
 ---
 
-## ⚡ Quick Install
+## Quick Install
 
 ```bash
 curl -fsSL https://syncbeats-server-1006171035854.asia-south1.run.app/cli | bash
@@ -37,7 +37,7 @@ npm start
 
 ---
 
-## 🚀 How It Works
+## How It Works
 
 SyncBeats Terminal Player connects to the SyncBeats backend server via **WebSockets (Socket.IO)** and synchronizes music playback across all connected clients (mobile app, web app, and this terminal player) in real-time.
 
@@ -104,7 +104,7 @@ The terminal player implements NTP-style clock synchronization:
 
 ---
 
-## 🎮 Keybindings
+## Keybindings
 
 | Key | Action |
 |---|---|
@@ -121,7 +121,7 @@ The terminal player implements NTP-style clock synchronization:
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 terminal-player/
@@ -148,7 +148,7 @@ terminal-player/
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 The app stores auth tokens and device keys using [Configstore](https://github.com/yeoman/configstore) at:
 
@@ -156,17 +156,8 @@ The app stores auth tokens and device keys using [Configstore](https://github.co
 ~/.config/configstore/syncbeats-terminal.json
 ```
 
-### Backend URL
 
-The terminal player connects to the production SyncBeats backend at:
-
-```
-https://syncbeats-server-1006171035854.asia-south1.run.app
-```
-
----
-
-## 🛠️ Development
+## Development
 
 ```bash
 # Clone
@@ -193,7 +184,7 @@ esbuild src/index.js --bundle --platform=node --format=esm --outfile=dist/index.
 
 ---
 
-## 🤝 Related Projects
+## Related Projects
 
 - **[SyncBeats Backend](https://github.com/Smanikanta21/syncbeats)** — Node.js/Express server with Socket.IO, Prisma, and YouTube integration
 - **SyncBeats Mobile App** — React Native companion app
